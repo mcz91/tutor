@@ -37,9 +37,15 @@ class QuestionModelTests(TestCase):
         recent_question = Question(pub_date=time)
         self.assertIs(recent_question.was_published_recently(), True)
 
-    def create_question(question_text, days):
-        time = timezone.now() + datetime.timedelta(days=days)
-        return Question.objects.create(question_text=question_text, pub_date=time)
+
+def create_question(question_text, days):
+    """
+    Create a question with the given `question_text` and published the
+    given number of `days` offset to now (negative for questions published
+    in the past, positive for questions that have yet to be published).
+    """
+    time = timezone.now() + datetime.timedelta(days=days)
+    return Question.objects.create(question_text=question_text, pub_date=time)
 
 class QuestionIndexViewTests(TestCase):
 
@@ -57,7 +63,7 @@ class QuestionIndexViewTests(TestCase):
         Questions with a pub_date in the past are displayed on the
         index page.
         """
-        question = create_question(question_text="Past question.", days=-30)
+        question = create_question(question_text="Past question.", days=-31)
         response = self.client.get(reverse('blog:index'))
         self.assertQuerysetEqual(
             response.context['latest_question_list'],
@@ -73,17 +79,19 @@ class QuestionIndexViewTests(TestCase):
         response = self.client.get(reverse('blog:index'))
         self.assertContains(response, "No questions are available.")
 
+        self.assertQuerysetEqual(response.context['latest_question_list'], [])
+
     def test_future_question_and_past_question(self):
         """
         Even if both past and future questions exist, only past questions
         are displayed.
         """
-        question = create_question(question_text="Past question.", days=-30)
-        create_question(question_text="Future question.", days=30)
+        question1 = create_question(question_text="Past question.", days=-30)
+        question2 = create_question(question_text="Future question.", days=30)
         response = self.client.get(reverse('blog:index'))
         self.assertQuerysetEqual(
             response.context['latest_question_list'],
-            [question],
+            [question2, question1],
         )
 
     def test_two_past_questions(self):
