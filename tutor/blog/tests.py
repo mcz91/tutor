@@ -1,3 +1,4 @@
+from secrets import choice
 from django.test import TestCase
 import datetime
 
@@ -64,6 +65,7 @@ class QuestionIndexViewTests(TestCase):
         index page.
         """
         question = create_question(question_text="Past question.", days=-31)
+        question.choice_set.create(choice_text = "test", votes = 0)
         response = self.client.get(reverse('blog:index'))
         self.assertQuerysetEqual(
             response.context['latest_question_list'],
@@ -86,19 +88,51 @@ class QuestionIndexViewTests(TestCase):
         Even if both past and future questions exist, only past questions
         are displayed.
         """
-        question1 = create_question(question_text="Past question.", days=-30)
-        question2 = create_question(question_text="Future question.", days=30)
+        question = create_question(question_text="Past question.", days=-30)
+        question.choice_set.create(choice_text = "test", votes = 0)
+        create_question(question_text="Future question.", days=30)
+        response = self.client.get(reverse('blog:index'))
+        self.assertQuerysetEqual(
+            response.context['latest_question_list'],
+            [question],
+        )
+
+    def test_two_past_questions(self):
+        question1 = create_question(question_text="Past question 1.", days=-30)
+        question2 = create_question(question_text="Past question 2.", days=-5)
+        question1.choice_set.create(choice_text = "test", votes = 0)
+        question2.choice_set.create(choice_text = "test", votes = 0)
         response = self.client.get(reverse('blog:index'))
         self.assertQuerysetEqual(
             response.context['latest_question_list'],
             [question2, question1],
         )
 
-    def test_two_past_questions(self):
-        question1 = create_question(question_text="Past question 1.", days=-30)
-        question2 = create_question(question_text="Past question 2.", days=-5)
+    def test_no_choice_question_display(self):
+        question = create_question(question_text="question", days = -1)
         response = self.client.get(reverse('blog:index'))
         self.assertQuerysetEqual(
             response.context['latest_question_list'],
-            [question2, question1],
+            [],
         )
+
+class QuestionDetailViewTests(TestCase):
+    def test_future_question(self):
+        """
+        The detail view of a question with a pub_date in the future
+        returns a 404 not found.
+        """
+        future_question = create_question(question_text='Future question.', days=5)
+        url = reverse('blog:detail', args=(future_question.id,))
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 404)
+
+    def test_past_question(self):
+        """
+        The detail view of a question with a pub_date in the past
+        displays the question's text.
+        """
+        past_question = create_question(question_text='Past Question.', days=-5)
+        url = reverse('blog:detail', args=(past_question.id,))
+        response = self.client.get(url)
+        self.assertContains(response, past_question.question_text)

@@ -1,4 +1,5 @@
 from asyncio import QueueEmpty
+from queue import Empty
 from django.http import HttpResponse, HttpResponseRedirect
 from django.template import loader
 from django.shortcuts import get_object_or_404, render
@@ -10,11 +11,13 @@ from django.utils import timezone
 
 class IndexView(generic.ListView):
     template_name = 'blog/index.html'
-    context_object_name = 'latest_questioooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooiioii_list'
-
+    context_object_name = 'latest_question_list'
     def get_queryset(self):
-        """Return the last five published questions."""
-        return Question.objects.order_by('-pub_date')[:5]
+        output = []
+        for question in  Question.objects.filter(pub_date__lte=timezone.now()).order_by('-pub_date'):
+            if len(question.choice_set.all()) != 0 and len(output) < 5:
+                output.append(question)
+        return output
 
 class DetailView(generic.DetailView):
     model = Question
