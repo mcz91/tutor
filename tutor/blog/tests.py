@@ -113,6 +113,7 @@ class QuestionIndexViewTests(TestCase):
         response = self.client.get(reverse('blog:index'))
         self.assertQuerysetEqual(
             response.context['latest_question_list'],
+            
             [],
         )
 
